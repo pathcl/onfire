@@ -37,8 +37,11 @@ Also you should be able to:
 root@172.16.0.2
 ```
 
+## SSH Credentials
+```bash
 User: root
 Password: root
+```
 
 ## Scenarios/playground
 
