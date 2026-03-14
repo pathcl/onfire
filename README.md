@@ -20,6 +20,28 @@ make deps
 
 ## Quickstart
 
+You can use pudu to launch microVMs in parallel and access them through ssh or web terminal.
+
+```bash
+# 1. Build binaries, download kernel + Ubuntu 22.04 rootfs, install agent
+make build    # no sudo — Go is not in root's PATH
+make assets   # no sudo — downloads kernel + rootfs, installs agent into rootfs
+N=2 make serve # launch fleet + web terminal
+```
+
+After running `make serve`, you can access the terminal at **http://localhost:8888** and investigate.
+
+Also you should be able to:
+
+```bash
+root@172.16.0.2
+```
+
+User: root
+Password: root
+
+## Scenarios/playground
+
 ### Easy scenario — disk full (1 VM, monolith)
 
 ```bash
