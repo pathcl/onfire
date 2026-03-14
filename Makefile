@@ -1,5 +1,8 @@
-KERNEL_URL  := https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.10/x86_64/vmlinux-5.10.223
-ROOTFS_URL  := https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.10/x86_64/ubuntu-22.04.ext4
+KERNEL_URL      := https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.10/x86_64/vmlinux-5.10.223
+ROOTFS_URL      := https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.10/x86_64/ubuntu-22.04.ext4
+FC_VERSION      := v1.10.1
+FC_URL          := https://github.com/firecracker-microvm/firecracker/releases/download/$(FC_VERSION)/firecracker-$(FC_VERSION)-x86_64.tgz
+FC_INSTALL_DIR  := /usr/local/bin
 
 KERNEL      := vmlinux.bin
 ROOTFS      := rootfs.ext4
@@ -21,7 +24,23 @@ KERNEL_ARGS := "console=ttyS0 reboot=k panic=1 pci=off ip=$(VM_IP)::$(TAP_IP):$(
 # Multi-VM configuration
 N           ?= 3
 
-.PHONY: build agent run assets net-up net-down clean net-up-multi net-down-multi run-multi serve cloud-init-iso update cleanup scenario
+.PHONY: build agent run assets net-up net-down clean net-up-multi net-down-multi run-multi serve cloud-init-iso update cleanup scenario deps
+
+deps:
+	@echo "==> Installing firecracker $(FC_VERSION)"
+	@TMPDIR=$$(mktemp -d) && \
+	  curl -fsSL -o $$TMPDIR/fc.tgz $(FC_URL) && \
+	  tar -xzf $$TMPDIR/fc.tgz -C $$TMPDIR && \
+	  sudo install -m 0755 $$TMPDIR/release-$(FC_VERSION)-x86_64/firecracker-$(FC_VERSION)-x86_64 $(FC_INSTALL_DIR)/firecracker && \
+	  rm -rf $$TMPDIR
+	@echo "  ✓ firecracker installed: $$(firecracker --version | head -1)"
+	@echo "==> Installing system dependencies"
+	sudo apt-get install -y --no-install-recommends \
+	  cloud-image-utils \
+	  e2fsprogs \
+	  iproute2 \
+	  iptables
+	@echo "  ✓ system dependencies installed"
 
 build:
 	go build -o $(BINARY) .

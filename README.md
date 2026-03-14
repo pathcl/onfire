@@ -8,10 +8,15 @@ Pudu launches fleets of lightweight VMs, injects realistic production failures (
 
 | Requirement | Notes |
 |---|---|
-| `firecracker` binary | v1.x, in `$PATH` or set via `--firecracker-bin` / `FIRECRACKER_BIN` |
-| `/dev/kvm` accessible | Run as root or grant `CAP_SYS_KVM` |
-| Linux with TAP/iptables | For VM networking |
+| Linux x86_64 | KVM-enabled host |
+| `/dev/kvm` accessible | Run as root or add user to `kvm` group |
 | Go 1.21+ | To build from source |
+
+Install all dependencies (firecracker, cloud-image-utils, iproute2, iptables) with:
+
+```bash
+make deps
+```
 
 ## Quickstart
 
