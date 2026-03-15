@@ -4,7 +4,7 @@
 //
 //	puduc fleet create --count 2
 //	puduc fleet list
-//	puduc fleet delete <id>
+//	puduc fleet delete <fleet-id>
 //	puduc scenario run <file.yaml> [--scale web=2]
 //	puduc scenario status <id>
 //	puduc scenario hint <id>
@@ -58,7 +58,7 @@ Environment:
 Commands:
   fleet create [--count N] [--kernel K] [--rootfs R] [--cloud-init-iso I] [--mem M] [--vcpus V]
   fleet list
-  fleet delete <id>
+  fleet delete <fleet-id>      fleet-id is the UUID shown by 'fleet list'
 
   scenario run <file.yaml> [--scale web=2,db=1] [--web-port P]
   scenario status <id>
@@ -66,7 +66,9 @@ Commands:
   scenario abort <id>
 
   terminal <vm-id>   open web terminal URL for VM
-`)
+
+OpenAPI spec: GET %s/api/v1/openapi.yaml
+`, serverURL)
 }
 
 // ── Fleet ──────────────────────────────────────────────────────────────────
@@ -82,11 +84,7 @@ func fleetCmd(args []string) {
 	case "list":
 		fleetList()
 	case "delete":
-		if len(args) < 2 {
-			fmt.Fprintf(os.Stderr, "fleet delete <id>\n")
-			os.Exit(1)
-		}
-		fleetDelete(args[1])
+		fleetDelete(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown fleet subcommand: %s\n", args[0])
 		os.Exit(1)
@@ -120,7 +118,23 @@ func fleetList() {
 	printJSON(resp)
 }
 
-func fleetDelete(id string) {
+func fleetDelete(args []string) {
+	fs := flag.NewFlagSet("fleet delete", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: puduc fleet delete <fleet-id>\n\nfleet-id is the UUID from 'puduc fleet list'\n")
+	}
+	fs.Parse(args) //nolint:errcheck
+
+	id := fs.Arg(0)
+	if id == "" {
+		fs.Usage()
+		os.Exit(1)
+	}
+	if !looksLikeUUID(id) {
+		fmt.Fprintf(os.Stderr, "error: %q does not look like a fleet ID (expected UUID)\n", id)
+		fmt.Fprintf(os.Stderr, "Run 'puduc fleet list' to see fleet IDs.\n")
+		os.Exit(1)
+	}
 	apiDelete("/api/v1/fleets/" + id)
 	fmt.Printf("fleet %s deleted\n", id)
 }
@@ -136,27 +150,37 @@ func scenarioCmd(args []string) {
 	case "run":
 		scenarioRun(args[1:])
 	case "status":
-		if len(args) < 2 {
-			fmt.Fprintf(os.Stderr, "scenario status <id>\n")
-			os.Exit(1)
-		}
-		scenarioStatus(args[1])
+		scenarioSubcmd("scenario status", args[1:], func(id string) {
+			printJSON(apiGet("/api/v1/scenarios/" + id))
+		})
 	case "hint":
-		if len(args) < 2 {
-			fmt.Fprintf(os.Stderr, "scenario hint <id>\n")
-			os.Exit(1)
-		}
-		scenarioHint(args[1])
+		scenarioSubcmd("scenario hint", args[1:], func(id string) {
+			printJSON(apiPost("/api/v1/scenarios/"+id+"/hint", nil))
+		})
 	case "abort":
-		if len(args) < 2 {
-			fmt.Fprintf(os.Stderr, "scenario abort <id>\n")
-			os.Exit(1)
-		}
-		scenarioAbort(args[1])
+		scenarioSubcmd("scenario abort", args[1:], func(id string) {
+			apiDelete("/api/v1/scenarios/" + id)
+			fmt.Printf("scenario %s aborted\n", id)
+		})
 	default:
 		fmt.Fprintf(os.Stderr, "unknown scenario subcommand: %s\n", args[0])
 		os.Exit(1)
 	}
+}
+
+// scenarioSubcmd parses flags + extracts ID for single-ID scenario commands.
+func scenarioSubcmd(name string, args []string, fn func(id string)) {
+	fs := flag.NewFlagSet(name, flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: puduc %s <scenario-id>\n", name)
+	}
+	fs.Parse(args) //nolint:errcheck
+	id := fs.Arg(0)
+	if id == "" {
+		fs.Usage()
+		os.Exit(1)
+	}
+	fn(id)
 }
 
 func scenarioRun(args []string) {
@@ -170,7 +194,7 @@ func scenarioRun(args []string) {
 
 	scenarioFile := fs.Arg(0)
 	if scenarioFile == "" {
-		fmt.Fprintf(os.Stderr, "scenario run <file.yaml>\n")
+		fmt.Fprintf(os.Stderr, "Usage: puduc scenario run <file.yaml>\n")
 		os.Exit(1)
 	}
 
@@ -186,34 +210,22 @@ func scenarioRun(args []string) {
 	printJSON(resp)
 }
 
-func scenarioStatus(id string) {
-	resp := apiGet("/api/v1/scenarios/" + id)
-	printJSON(resp)
-}
-
-func scenarioHint(id string) {
-	resp := apiPost("/api/v1/scenarios/"+id+"/hint", nil)
-	printJSON(resp)
-}
-
-func scenarioAbort(id string) {
-	apiDelete("/api/v1/scenarios/" + id)
-	fmt.Printf("scenario %s aborted\n", id)
-}
-
 // ── Terminal ───────────────────────────────────────────────────────────────
 
 func terminalCmd(args []string) {
-	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "terminal <vm-id>\n")
+	fs := flag.NewFlagSet("terminal", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: puduc terminal <vm-id>\n")
+	}
+	fs.Parse(args) //nolint:errcheck
+
+	vmID := fs.Arg(0)
+	if vmID == "" {
+		fs.Usage()
 		os.Exit(1)
 	}
-	vmID := args[0]
-	url := fmt.Sprintf("%s/ws?vm=%s", serverURL, vmID)
-	// Strip ws scheme for display
-	webURL := strings.Replace(serverURL, "http://", "http://", 1) + "/?vm=" + vmID
-	fmt.Printf("Web terminal: %s\n", webURL)
-	fmt.Printf("WebSocket:    %s\n", url)
+	fmt.Printf("Web terminal: %s/?vm=%s\n", serverURL, vmID)
+	fmt.Printf("WebSocket:    %s/ws?vm=%s\n", strings.Replace(serverURL, "http://", "ws://", 1), vmID)
 }
 
 // ── HTTP helpers ───────────────────────────────────────────────────────────
@@ -271,6 +283,22 @@ func printJSON(data []byte) {
 	}
 	out, _ := json.MarshalIndent(v, "", "  ")
 	fmt.Println(string(out))
+}
+
+func looksLikeUUID(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	for i, c := range s {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			if c != '-' {
+				return false
+			}
+		} else if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 func fatal(format string, args ...interface{}) {

@@ -44,5 +44,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/v1/fleets/", s.handleFleet)
 	mux.HandleFunc("/api/v1/scenarios", s.handleScenarios)
 	mux.HandleFunc("/api/v1/scenarios/", s.handleScenario)
+	mux.HandleFunc("/api/v1/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/yaml")
+		w.Write(OpenAPISpec) //nolint:errcheck
+	})
 	return mux
 }

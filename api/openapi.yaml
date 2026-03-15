@@ -1,0 +1,309 @@
+openapi: "3.0.3"
+info:
+  title: pudu API
+  description: REST API for managing Firecracker microVM fleets and SRE incident training scenarios.
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8888/api/v1
+    description: Local pudu server
+
+paths:
+  /fleets:
+    get:
+      summary: List all fleets
+      operationId: listFleets
+      responses:
+        "200":
+          description: Array of fleet objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Fleet"
+    post:
+      summary: Create and launch a new VM fleet
+      operationId: createFleet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FleetCreateRequest"
+      responses:
+        "201":
+          description: Fleet created and launching
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fleet"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /fleets/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Fleet UUID
+        schema:
+          type: string
+          format: uuid
+          example: "0d445e57-0cbd-4ea6-9f81-9ecb3ad063cf"
+    get:
+      summary: Get a fleet by ID
+      operationId: getFleet
+      responses:
+        "200":
+          description: Fleet object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fleet"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Stop and delete a fleet
+      operationId: deleteFleet
+      responses:
+        "204":
+          description: Fleet stopped
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /scenarios:
+    get:
+      summary: List all scenarios
+      operationId: listScenarios
+      responses:
+        "200":
+          description: Array of scenario objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scenario"
+    post:
+      summary: Start a new scenario
+      operationId: createScenario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScenarioCreateRequest"
+      responses:
+        "201":
+          description: Scenario started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scenario"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /scenarios/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Scenario UUID
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get scenario status and live score
+      operationId: getScenario
+      responses:
+        "200":
+          description: Scenario object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scenario"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Abort a running scenario
+      operationId: deleteScenario
+      responses:
+        "204":
+          description: Scenario aborted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /scenarios/{id}/hint:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Scenario UUID
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Request the next hint (deducts points)
+      operationId: requestHint
+      responses:
+        "200":
+          description: Hint text and updated score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HintResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  schemas:
+    VMStatus:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: VM index (0-based)
+          example: 0
+        ip:
+          type: string
+          description: VM IP address
+          example: "172.16.0.2"
+
+    Fleet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "0d445e57-0cbd-4ea6-9f81-9ecb3ad063cf"
+        count:
+          type: integer
+          example: 2
+        status:
+          type: string
+          enum: [starting, running, stopped]
+        vms:
+          type: array
+          items:
+            $ref: "#/components/schemas/VMStatus"
+        web_port:
+          type: integer
+          example: 8888
+        created_at:
+          type: string
+          format: date-time
+
+    FleetCreateRequest:
+      type: object
+      properties:
+        count:
+          type: integer
+          default: 1
+          description: Number of VMs to launch
+          example: 2
+        kernel:
+          type: string
+          description: Path to vmlinux kernel image (uses server default if omitted)
+          example: "vmlinux.bin"
+        rootfs:
+          type: string
+          description: Path to ext4 rootfs image (uses server default if omitted)
+          example: "rootfs.ext4"
+        cloud_init_iso:
+          type: string
+          description: Path to cloud-init NoCloud ISO
+          example: "cloud-init.iso"
+        mem_mb:
+          type: integer
+          description: Memory per VM in MiB (0 = server default of 512)
+          example: 512
+        vcpus:
+          type: integer
+          description: vCPUs per VM (0 = server default of 1)
+          example: 1
+
+    Scenario:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        file:
+          type: string
+          example: "scenarios/monolith/disk-full.yaml"
+        status:
+          type: string
+          enum: [running, complete, aborted]
+        score:
+          type: integer
+          example: 85
+        elapsed:
+          type: string
+          example: "1m23s"
+        hints_used:
+          type: integer
+          example: 0
+        created_at:
+          type: string
+          format: date-time
+
+    ScenarioCreateRequest:
+      type: object
+      required:
+        - scenario_file
+      properties:
+        scenario_file:
+          type: string
+          description: Path to scenario YAML file
+          example: "scenarios/monolith/disk-full.yaml"
+        kernel:
+          type: string
+          example: "vmlinux.bin"
+        rootfs:
+          type: string
+          example: "rootfs.ext4"
+        cloud_init_iso:
+          type: string
+          example: "cloud-init.iso"
+        firecracker_bin:
+          type: string
+          description: Path to firecracker binary (uses server default if omitted)
+        scale:
+          type: string
+          description: Tier scale overrides, e.g. "web=2,db=1"
+          example: "web=2,db=1"
+        web_port:
+          type: integer
+          default: 8888
+          description: Port for WebSSH terminal (0 to disable)
+
+    HintResponse:
+      type: object
+      properties:
+        hint:
+          type: string
+          example: "Check disk usage with: df -h"
+        score:
+          type: integer
+          example: 75
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        text/plain:
+          schema:
+            type: string
+    BadRequest:
+      description: Invalid request
+      content:
+        text/plain:
+          schema:
+            type: string
