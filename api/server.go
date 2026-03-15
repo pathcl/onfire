@@ -24,6 +24,19 @@ func NewServer(baseCfg vm.Config) *Server {
 	}
 }
 
+// TotalVMs returns the total number of VMs across all running fleets.
+func (s *Server) TotalVMs() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	total := 0
+	for _, f := range s.fleets {
+		if f.Status == "running" || f.Status == "starting" {
+			total += f.Count
+		}
+	}
+	return total
+}
+
 // Handler returns an http.Handler with all API routes mounted.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()

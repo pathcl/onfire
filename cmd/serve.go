@@ -116,6 +116,11 @@ func StartWebTerminal(ctx context.Context, vmCount, port int) {
 	}
 }
 
+// WSHandler proxies a WebSocket connection to the SSH session on VM vmID.
+func WSHandler(ctx context.Context, conn *websocket.Conn, vmID int) {
+	wsHandler(ctx, conn, vmID)
+}
+
 func wsHandler(ctx context.Context, conn *websocket.Conn, vmID int) {
 	sshAddr := fmt.Sprintf("172.16.%d.2:22", vmID)
 

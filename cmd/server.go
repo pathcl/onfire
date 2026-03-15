@@ -7,11 +7,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/pathcl/pudu/api"
 	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/pudu/web"
 )
 
 func serverCmd(args []string) {
@@ -31,21 +35,43 @@ func serverCmd(args []string) {
 
 	srv := api.NewServer(cfg)
 
+	upgrader := websocket.Upgrader{
+		CheckOrigin:     func(r *http.Request) bool { return true },
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
 	mux := http.NewServeMux()
 
-	// Mount REST API routes
-	apiHandler := srv.Handler()
-	mux.Handle("/api/", apiHandler)
+	// REST API
+	mux.Handle("/api/", srv.Handler())
 
-	// Mount WebSSH terminal routes (/ and /ws) — vmCount starts at 0; the API manages VMs
+	// WebSSH terminal — vmID validated against live fleet state
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		// Delegate to the web terminal handler by temporarily mounting it
-		// The web terminal is started per-fleet/scenario via the API; this is a
-		// passthrough handler for any already-running web terminal mux.
-		http.NotFound(w, r)
+		vmID, err := strconv.Atoi(r.URL.Query().Get("vm"))
+		if err != nil || vmID < 0 {
+			http.Error(w, "invalid vm id", http.StatusBadRequest)
+			return
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "websocket upgrade error: %v\n", err)
+			return
+		}
+		defer conn.Close()
+		WSHandler(r.Context(), conn, vmID)
 	})
+
+	// Web UI — injects live VM count so tabs reflect current fleet
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "<html><body><h1>pudu server</h1><p>Use the REST API at <a href=\"/api/v1/fleets\">/api/v1/fleets</a> and <a href=\"/api/v1/scenarios\">/api/v1/scenarios</a></p></body></html>")
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		vmCount := srv.TotalVMs()
+		html := strings.ReplaceAll(string(web.IndexHTML), "__VM_COUNT__", strconv.Itoa(vmCount))
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(html)) //nolint:errcheck
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -60,8 +86,8 @@ func serverCmd(args []string) {
 		httpSrv.Shutdown(shutdownCtx) //nolint:errcheck
 	}()
 
-	fmt.Fprintf(os.Stderr, "==> pudu API server: http://localhost:%d\n", port)
-	fmt.Fprintf(os.Stderr, "    REST API: http://localhost:%d/api/v1/\n", port)
+	fmt.Fprintf(os.Stderr, "==> pudu server:  http://localhost:%d        (web terminal)\n", port)
+	fmt.Fprintf(os.Stderr, "    REST API:    http://localhost:%d/api/v1/\n", port)
 	fmt.Fprintf(os.Stderr, "Press Ctrl+C to stop\n\n")
 
 	if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
