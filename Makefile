@@ -25,7 +25,7 @@ KERNEL_ARGS := "console=ttyS0 reboot=k panic=1 pci=off ip=$(VM_IP)::$(TAP_IP):$(
 # Multi-VM configuration
 N           ?= 3
 
-.PHONY: build build-puduc agent run assets net-up net-down clean net-up-multi net-down-multi run-multi serve cloud-init-iso update cleanup scenario server deps
+.PHONY: build build-puduc agent run assets net-up net-down clean cloud-init-iso update scenario server deps
 
 deps:
 	@echo "==> Installing firecracker $(FC_VERSION)"
@@ -108,53 +108,7 @@ run: assets net-up
 	  --kernel-args $(KERNEL_ARGS) \
 	  --cloud-init-iso $(CLOUD_INIT_ISO)
 
-net-up-multi:
-	@for i in $$(seq 0 $$(($(N)-1))); do \
-		TAP=tap$$i; \
-		HOST_IP=172.16.$$i.1; \
-		echo "==> Setting up TAP $$TAP (host=$$HOST_IP/30)"; \
-		sudo ip tuntap add $$TAP mode tap 2>/dev/null || true; \
-		sudo ip addr add $$HOST_IP/30 dev $$TAP 2>/dev/null || true; \
-		sudo ip link set $$TAP up; \
-		sudo iptables -t nat -C POSTROUTING -o $(HOST_IFACE) -j MASQUERADE 2>/dev/null || \
-		  sudo iptables -t nat -A POSTROUTING -o $(HOST_IFACE) -j MASQUERADE; \
-		sudo iptables -C FORWARD -i $$TAP -o $(HOST_IFACE) -j ACCEPT 2>/dev/null || \
-		  sudo iptables -A FORWARD -i $$TAP -o $(HOST_IFACE) -j ACCEPT; \
-		sudo iptables -C FORWARD -i $(HOST_IFACE) -o $$TAP -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
-		  sudo iptables -A FORWARD -i $(HOST_IFACE) -o $$TAP -m state --state RELATED,ESTABLISHED -j ACCEPT; \
-	done
-	@sudo sh -c 'echo 1 > /proc/sys/net/ipv4/ip_forward'
-
-net-down-multi:
-	@for i in $$(seq 0 $$(($(N)-1))); do \
-		TAP=tap$$i; \
-		echo "==> Tearing down TAP $$TAP"; \
-		sudo ip link del $$TAP 2>/dev/null || true; \
-		sudo iptables -t nat -D POSTROUTING -o $(HOST_IFACE) -j MASQUERADE 2>/dev/null || true; \
-		sudo iptables -D FORWARD -i $$TAP -o $(HOST_IFACE) -j ACCEPT 2>/dev/null || true; \
-		sudo iptables -D FORWARD -i $(HOST_IFACE) -o $$TAP -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true; \
-	done
-
 ROOTFS_SIZE ?= 1024
-
-run-multi: assets net-up-multi
-	sudo ./$(BINARY) run \
-	  --kernel $(KERNEL) \
-	  --rootfs $(ROOTFS) \
-	  --mem 512 \
-	  --rootfs-size $(ROOTFS_SIZE) \
-	  --count $(N) \
-	  --cloud-init-iso $(CLOUD_INIT_ISO)
-
-serve: assets net-up-multi
-	sudo ./$(BINARY) serve \
-	  --kernel $(KERNEL) \
-	  --rootfs $(ROOTFS) \
-	  --mem 512 \
-	  --rootfs-size $(ROOTFS_SIZE) \
-	  --count $(N) \
-	  --cloud-init-iso $(CLOUD_INIT_ISO) \
-	  --port 8888
 
 SCENARIO    ?= scenarios/monolith/disk-full.yaml
 

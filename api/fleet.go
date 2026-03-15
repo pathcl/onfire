@@ -200,6 +200,7 @@ func launchFleet(ctx context.Context, baseCfg vm.Config, vmIDs []int, deps Launc
 				}
 				return
 			}
+			defer deps.RemoveTAP(id)
 
 			// Generate per-VM cloud-init ISO on demand (may not exist for higher IDs)
 			if baseCfg.CloudInitISO != "" {

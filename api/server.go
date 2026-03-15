@@ -12,6 +12,7 @@ import (
 type LaunchDeps struct {
 	Factory       vm.Factory
 	EnsureTAP     func(id int) error
+	RemoveTAP     func(id int)
 	PrepareRootFS func(base string, id int, sizeMiB int64) (string, error)
 	EnsureISO     func(dst, src, hostname string) error
 }
@@ -21,6 +22,7 @@ func DefaultLaunchDeps() LaunchDeps {
 	return LaunchDeps{
 		Factory:       vm.New,
 		EnsureTAP:     vm.EnsureTAP,
+		RemoveTAP:     vm.RemoveTAP,
 		PrepareRootFS: vm.PrepareRootFS,
 		EnsureISO:     vm.EnsureCloudInitISO,
 	}

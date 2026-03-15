@@ -25,6 +25,7 @@ func noopDeps() api.LaunchDeps {
 			return &fakeVM{}, nil
 		},
 		EnsureTAP:     func(id int) error { return nil },
+		RemoveTAP:     func(id int) {},
 		PrepareRootFS: func(base string, id int, _ int64) (string, error) { return base, nil },
 		EnsureISO:     func(dst, src, hostname string) error { return nil },
 	}
@@ -48,6 +49,7 @@ func recordingDeps() (deps api.LaunchDeps, launchedIDs func() []int, isoPaths fu
 			return &fakeVM{}, nil
 		},
 		EnsureTAP:     func(id int) error { return nil },
+		RemoveTAP:     func(id int) {},
 		PrepareRootFS: func(base string, id int, _ int64) (string, error) { return base, nil },
 		EnsureISO: func(dst, src, hostname string) error {
 			mu.Lock()
