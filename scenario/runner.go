@@ -112,6 +112,11 @@ func (r *Runner) Run(ctx context.Context) error {
 			if e.MemMB > 0 {
 				cfg.MemSizeMiB = e.MemMB
 			}
+			if err := vm.EnsureTAP(e.Index); err != nil {
+				fleetErrs <- fmt.Errorf("VM %s: tap setup: %w", e.Name, err)
+				return
+			}
+
 			rootFS, err := vm.PrepareRootFS(baseCfg.RootFSPath, e.Index, baseCfg.RootFSSizeMiB)
 			if err != nil {
 				fleetErrs <- fmt.Errorf("VM %s: prepare rootfs: %w", e.Name, err)

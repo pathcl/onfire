@@ -61,6 +61,13 @@ func launchFleet(ctx context.Context, baseCfg vm.Config, count int) error {
 			defer os.Remove(vmRootFS)
 			cfg.RootFSPath = vmRootFS
 
+			if err := vm.EnsureTAP(id); err != nil {
+				if ctx.Err() == nil {
+					errChan <- fmt.Errorf("VM %d: tap setup: %w", id, err)
+				}
+				return
+			}
+
 			m, err := vm.New(ctx, cfg)
 			if err != nil {
 				if ctx.Err() == nil {

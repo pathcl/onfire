@@ -158,14 +158,14 @@ serve: assets net-up-multi
 
 SCENARIO    ?= scenarios/monolith/disk-full.yaml
 
-scenario: assets net-up-multi
+scenario: assets
 	sudo ./$(BINARY) scenario run \
 	  --kernel $(KERNEL) \
 	  --rootfs $(ROOTFS) \
 	  --cloud-init-iso $(CLOUD_INIT_ISO) \
 	  $(SCENARIO)
 
-server: assets net-up-multi
+server: assets
 	sudo ./$(BINARY) server \
 	  --kernel $(KERNEL) \
 	  --rootfs $(ROOTFS) \
