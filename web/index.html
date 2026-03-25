@@ -116,7 +116,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 <script>
-// Map of "vm-N" → { term, fitAddon, ws, tabEl, paneEl, connected }
+// Map of "vm-N" → { term, fitAddon, ws, tabEl, paneEl, connected, scenarioTitle }
 const vmTerminals = {};
 let activeVMKey = null;
 
@@ -126,36 +126,60 @@ const emptyEl       = document.getElementById('empty');
 const statusText    = document.getElementById('status-text');
 const fleetSummary  = document.getElementById('fleet-summary');
 
-// ── Fleet polling ────────────────────────────────────────────────────────────
+// ── Polling ───────────────────────────────────────────────────────────────────
 
-async function fetchVMs() {
+async function fetchAllVMs() {
+  const results = [];
+
+  // Fleet VMs
   try {
     const resp = await fetch('/api/v1/fleets');
-    if (!resp.ok) return [];
-    const fleets = await resp.json();
-    const vms = [];
-    for (const fleet of fleets || []) {
-      if (fleet.status === 'running' || fleet.status === 'starting') {
-        for (const vm of fleet.vms || []) {
-          vms.push({ fleetID: fleet.id, vmID: vm.id, ip: vm.ip, fleetStatus: fleet.status });
+    if (resp.ok) {
+      const fleets = await resp.json();
+      for (const fleet of fleets || []) {
+        if (fleet.status === 'running' || fleet.status === 'starting') {
+          for (const vm of fleet.vms || []) {
+            results.push({ vmID: vm.id, ip: vm.ip, label: `vm-${vm.id}`, scenarioTitle: null });
+          }
         }
       }
     }
-    return vms;
-  } catch (e) {
-    return [];
-  }
+  } catch (_) {}
+
+  // Scenario VMs
+  try {
+    const resp = await fetch('/api/v1/scenarios');
+    if (resp.ok) {
+      const scenarios = await resp.json();
+      for (const sc of scenarios || []) {
+        if (sc.status === 'running') {
+          for (const vm of sc.vms || []) {
+            // Avoid duplicates if the same VM ID appears in both (shouldn't happen, but guard it)
+            if (!results.find(v => v.vmID === vm.id)) {
+              results.push({ vmID: vm.id, ip: vm.ip, label: `vm-${vm.id}`, scenarioTitle: sc.title });
+            }
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  return results;
 }
 
 async function syncVMs() {
-  const vms = await fetchVMs();
+  const vms = await fetchAllVMs();
 
   // Update header summary
-  const runningFleets = new Set(vms.map(v => v.fleetID)).size;
   if (vms.length === 0) {
     fleetSummary.textContent = 'no running VMs';
   } else {
-    fleetSummary.textContent = `${vms.length} VM${vms.length !== 1 ? 's' : ''} across ${runningFleets} fleet${runningFleets !== 1 ? 's' : ''}`;
+    const scenarioCount = vms.filter(v => v.scenarioTitle).length;
+    const fleetCount = vms.length - scenarioCount;
+    const parts = [];
+    if (fleetCount > 0) parts.push(`${fleetCount} fleet VM${fleetCount !== 1 ? 's' : ''}`);
+    if (scenarioCount > 0) parts.push(`${scenarioCount} scenario VM${scenarioCount !== 1 ? 's' : ''}`);
+    fleetSummary.textContent = parts.join(' · ');
   }
 
   const currentKeys = new Set(vms.map(v => `vm-${v.vmID}`));
@@ -171,7 +195,7 @@ async function syncVMs() {
   for (const vm of vms) {
     const key = `vm-${vm.vmID}`;
     if (!vmTerminals[key]) {
-      addTerminal(vm.vmID, vm.ip);
+      addTerminal(vm.vmID, vm.ip, vm.scenarioTitle);
     }
   }
 
@@ -182,14 +206,15 @@ async function syncVMs() {
 
 // ── Terminal management ───────────────────────────────────────────────────────
 
-function addTerminal(vmID, ip) {
+function addTerminal(vmID, ip, scenarioTitle) {
   const key = `vm-${vmID}`;
 
-  // Tab
+  // Tab — show scenario title alongside VM ID when available
+  const tabLabel = scenarioTitle ? `vm-${vmID} · ${scenarioTitle}` : `vm-${vmID}`;
   const tab = document.createElement('div');
   tab.className = 'tab';
-  tab.innerHTML = `<span class="dot"></span>vm-${vmID}`;
-  tab.title = ip;
+  tab.innerHTML = `<span class="dot"></span>${tabLabel}`;
+  tab.title = scenarioTitle ? `${ip} — ${scenarioTitle}` : ip;
   tab.addEventListener('click', () => switchTab(key));
   tabsEl.appendChild(tab);
 
@@ -212,7 +237,7 @@ function addTerminal(vmID, ip) {
   term.loadAddon(fitAddon);
   term.open(wrapper);
 
-  vmTerminals[key] = { term, fitAddon, ws: null, tabEl: tab, paneEl: pane, connected: false };
+  vmTerminals[key] = { term, fitAddon, ws: null, tabEl: tab, paneEl: pane, connected: false, scenarioTitle };
 
   // Switch to first VM automatically
   if (activeVMKey === null) {
@@ -250,7 +275,8 @@ function connectWebSocket(key, vmID) {
   ws.addEventListener('open', () => {
     t.connected = true;
     t.tabEl.className = 'tab connected' + (activeVMKey === key ? ' active' : '');
-    statusText.textContent = `${key}: connected (${t.term.cols}×${t.term.rows})`;
+    const context = t.scenarioTitle ? ` — ${t.scenarioTitle}` : '';
+    statusText.textContent = `${key}${context}: connected (${t.term.cols}×${t.term.rows})`;
     t.fitAddon.fit();
   });
 
@@ -316,7 +342,7 @@ window.addEventListener('resize', () => {
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
 syncVMs();
-setInterval(syncVMs, 5000);   // re-check fleet state every 5 seconds
+setInterval(syncVMs, 5000);   // re-check fleet and scenario state every 5 seconds
 </script>
 </body>
 </html>

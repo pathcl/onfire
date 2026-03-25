@@ -15,13 +15,15 @@ import (
 
 // ScenarioEntry tracks a running scenario.
 type ScenarioEntry struct {
-	ID        string    `json:"id"`
-	File      string    `json:"file"`
-	Status    string    `json:"status"` // running|complete|aborted
-	Score     int       `json:"score"`
-	Elapsed   string    `json:"elapsed"`
-	HintsUsed int       `json:"hints_used"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        string     `json:"id"`
+	Title     string     `json:"title"`
+	File      string     `json:"file"`
+	Status    string     `json:"status"` // running|complete|aborted
+	Score     int        `json:"score"`
+	Elapsed   string     `json:"elapsed"`
+	HintsUsed int        `json:"hints_used"`
+	VMs       []VMStatus `json:"vms"`
+	CreatedAt time.Time  `json:"created_at"`
 	runner    *scenario.Runner
 	cancel    context.CancelFunc
 	startAt   time.Time
@@ -149,12 +151,19 @@ func (s *Server) createScenario(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	vms := make([]VMStatus, len(vmIDs))
+	for i, vid := range vmIDs {
+		vms[i] = VMStatus{ID: vid, IP: fmt.Sprintf("172.16.%d.2", vid)}
+	}
+
 	id := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	entry := &ScenarioEntry{
 		ID:        id,
+		Title:     sc.Meta.Title,
 		File:      req.ScenarioFile,
 		Status:    "running",
+		VMs:       vms,
 		CreatedAt: time.Now(),
 		startAt:   time.Now(),
 		runner:    runner,
