@@ -75,17 +75,29 @@ func (r *Runner) Run(ctx context.Context) error {
 		baseCfg.FirecrackerBin = r.opts.FirecrackerBin
 	}
 
-	// Generate per-VM cloud-init ISOs from the base ISO
+	// Generate per-VM cloud-init ISOs, always fresh so the scenario MOTD
+	// is embedded at boot time (not dependent on provisioning timing).
 	if baseCfg.CloudInitISO != "" {
+		// Write MOTD to a temp file so make-cloud-init-iso.sh can embed it.
+		motdContent := r.buildMOTD()
+		motdFile, err := os.CreateTemp("", "pudu-motd-*.txt")
+		if err != nil {
+			return fmt.Errorf("create motd temp file: %w", err)
+		}
+		motdPath := motdFile.Name()
+		defer os.Remove(motdPath)
+		if _, err := motdFile.WriteString(motdContent); err != nil {
+			motdFile.Close()
+			return fmt.Errorf("write motd temp file: %w", err)
+		}
+		motdFile.Close()
+
 		base := baseCfg.CloudInitISO
 		stem := base[:len(base)-4] // strip .iso
 		for i := 0; i < r.Plan.TotalVMs; i++ {
 			dst := fmt.Sprintf("%s-%d.iso", stem, i)
-			if _, err := os.Stat(dst); err == nil {
-				continue // already exists
-			}
 			hostname := r.Plan.VMs[i].Name
-			cmd := exec.Command("bash", "make-cloud-init-iso.sh", dst, "cloud-init-config.yaml", hostname)
+			cmd := exec.Command("bash", "make-cloud-init-iso.sh", dst, "cloud-init-config.yaml", hostname, motdPath)
 			if out, err := cmd.CombinedOutput(); err != nil {
 				return fmt.Errorf("cloud-init ISO for VM %d: %w\n%s", i, err, out)
 			}
@@ -486,10 +498,8 @@ var sshConfig = &ssh.ClientConfig{
 	Timeout:         5 * time.Second,
 }
 
-// provisionAll SSHes into every VM, installs its tier's services, and writes
-// the scenario context as /etc/motd so trainees see it on login.
+// provisionAll SSHes into every VM and installs its tier's services.
 func (r *Runner) provisionAll(ctx context.Context) error {
-	motd := r.buildMOTD()
 	var wg sync.WaitGroup
 	errs := make(chan error, len(r.Plan.VMs))
 	for _, entry := range r.Plan.VMs {
@@ -509,7 +519,7 @@ func (r *Runner) provisionAll(ctx context.Context) error {
 			if len(svcs) > 0 {
 				fmt.Fprintf(os.Stderr, "  provisioning %s: installing %s...\n", e.Name, strings.Join(svcs, ", "))
 			}
-			if err := provisionVM(ctx, e, svcs, setup, motd); err != nil {
+			if err := provisionVM(ctx, e, svcs, setup); err != nil {
 				errs <- fmt.Errorf("%s: %w", e.Name, err)
 			} else if len(svcs) > 0 {
 				fmt.Fprintf(os.Stderr, "  ✓ %s provisioned (%s)\n", e.Name, strings.Join(svcs, ", "))
@@ -526,9 +536,8 @@ func (r *Runner) provisionAll(ctx context.Context) error {
 	return lastErr
 }
 
-// provisionVM SSHes into a single VM, installs packages, runs setup commands,
-// and writes motd to /etc/motd (empty motd is skipped).
-func provisionVM(ctx context.Context, entry VMEntry, services, setup []string, motd string) error {
+// provisionVM SSHes into a single VM, installs packages, and runs setup commands.
+func provisionVM(ctx context.Context, entry VMEntry, services, setup []string) error {
 	addr := fmt.Sprintf("172.16.%d.2:22", entry.Index)
 
 	// Retry until SSH is up (VM may still be booting)
@@ -565,13 +574,6 @@ func provisionVM(ctx context.Context, entry VMEntry, services, setup []string, m
 	for _, cmd := range setup {
 		if err := runSSH(client, cmd); err != nil {
 			return fmt.Errorf("setup command %q: %w", cmd, err)
-		}
-	}
-
-	// Write scenario context as MOTD so trainees see it on SSH login
-	if motd != "" {
-		if err := writeFileSSH(client, "/etc/motd", motd); err != nil {
-			return fmt.Errorf("write motd: %w", err)
 		}
 	}
 	return nil
@@ -615,21 +617,6 @@ func runSSH(client *ssh.Client, cmd string) error {
 	defer sess.Close()
 	out, err := sess.CombinedOutput(cmd)
 	if err != nil {
-		return fmt.Errorf("%w\n%s", err, out)
-	}
-	return nil
-}
-
-// writeFileSSH writes content to path on the remote host by piping via stdin.
-// This avoids shell-escaping issues with arbitrary content.
-func writeFileSSH(client *ssh.Client, path, content string) error {
-	sess, err := client.NewSession()
-	if err != nil {
-		return err
-	}
-	defer sess.Close()
-	sess.Stdin = strings.NewReader(content)
-	if out, err := sess.Output("cat > " + path); err != nil {
 		return fmt.Errorf("%w\n%s", err, out)
 	}
 	return nil
