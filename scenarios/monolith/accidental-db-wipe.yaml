@@ -1,0 +1,86 @@
+scenario:
+  id: monolith-db-wipe-001
+  title: Production Database Wiped
+  difficulty: medium
+  architecture: monolith
+  tags:
+    - database
+    - postgresql
+    - disaster-recovery
+    - backup-restore
+  description: |
+    A developer ran a database reset command against the wrong target and wiped
+    the production PostgreSQL database. All data is gone from the live system.
+    Your task is to restore the database from backups and bring the service back
+    online so PostgreSQL is running and accepting connections.
+
+environment:
+  tiers:
+    - name: app
+      count: 1
+      vcpus: 1
+      mem_mb: 512
+      services:
+        - postgresql
+      setup:
+        # Initialise PostgreSQL and create the production database
+        - pg_createcluster 14 main || true
+        - systemctl start postgresql || true
+        - sleep 2
+        # Create the production database with sample data
+        - |
+          sudo -u postgres createdb production 2>/dev/null || true
+          sudo -u postgres psql production -c "CREATE TABLE IF NOT EXISTS scoreboards (id SERIAL PRIMARY KEY, name TEXT, score INT);" 2>/dev/null
+          sudo -u postgres psql production -c "INSERT INTO scoreboards (name, score) VALUES ('Team A', 4500), ('Team B', 3200), ('Team C', 5800);" 2>/dev/null
+        # Back up the database
+        - mkdir -p /var/backups/postgresql
+        - sudo -u postgres pg_dump production > /var/backups/postgresql/production.sql
+        # Delete the data directory to simulate the disaster
+        - systemctl stop postgresql
+        - rm -rf /var/lib/postgresql/14/main
+        # Attempt to start (will fail — this is the scenario state)
+        - systemctl start postgresql || true
+
+signals:
+  alerts:
+    - name: DatabaseConnectionFailure
+      severity: critical
+      fired_at: "0s"
+      message: "Cannot connect to PostgreSQL. Connection refused."
+    - name: AllEndpointsReturning500
+      severity: critical
+      fired_at: "0s"
+      message: "All application endpoints returning 500 Internal Server Error."
+  symptoms:
+    - PostgreSQL service is in failed state and will not start
+    - The PostgreSQL data directory (/var/lib/postgresql/14/main) does not exist
+    - A developer recently ran pg_reset targeting the wrong database
+  runbook_url: "https://wiki.example.com/incidents/database-loss"
+
+faults: []
+
+objectives:
+  - id: postgresql-running
+    description: PostgreSQL service is running and the production database is restored
+    check:
+      type: process-running
+      target:
+        tier: app
+      service: postgresql
+
+scoring:
+  base: 100
+  time_penalty_per_second: 0.033
+  hint_penalty: 15
+  perfect_window: 10m
+
+hints:
+  - text: "Check the status of PostgreSQL: systemctl status postgresql"
+  - text: "The data directory was deleted. Look for a backup: ls -la /var/backups/postgresql/"
+  - text: |
+      Steps to restore:
+      1. Initialise a new cluster: pg_createcluster 14 main
+      2. Start PostgreSQL: systemctl start postgresql
+      3. Create the production database: sudo -u postgres createdb production
+      4. Restore from backup: sudo -u postgres psql production < /var/backups/postgresql/production.sql
+      5. Verify: sudo -u postgres psql production -c "SELECT * FROM scoreboards;"
