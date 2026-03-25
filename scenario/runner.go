@@ -486,8 +486,10 @@ var sshConfig = &ssh.ClientConfig{
 	Timeout:         5 * time.Second,
 }
 
-// provisionAll SSHes into every VM and installs its tier's services.
+// provisionAll SSHes into every VM, installs its tier's services, and writes
+// the scenario context as /etc/motd so trainees see it on login.
 func (r *Runner) provisionAll(ctx context.Context) error {
+	motd := r.buildMOTD()
 	var wg sync.WaitGroup
 	errs := make(chan error, len(r.Plan.VMs))
 	for _, entry := range r.Plan.VMs {
@@ -499,18 +501,17 @@ func (r *Runner) provisionAll(ctx context.Context) error {
 				break
 			}
 		}
-		if len(services) == 0 && len(setup) == 0 {
-			continue
-		}
 		wg.Add(1)
 		e := entry
 		svcs := services
 		go func() {
 			defer wg.Done()
-			fmt.Fprintf(os.Stderr, "  provisioning %s: installing %s...\n", e.Name, strings.Join(svcs, ", "))
-			if err := provisionVM(ctx, e, svcs, setup); err != nil {
+			if len(svcs) > 0 {
+				fmt.Fprintf(os.Stderr, "  provisioning %s: installing %s...\n", e.Name, strings.Join(svcs, ", "))
+			}
+			if err := provisionVM(ctx, e, svcs, setup, motd); err != nil {
 				errs <- fmt.Errorf("%s: %w", e.Name, err)
-			} else {
+			} else if len(svcs) > 0 {
 				fmt.Fprintf(os.Stderr, "  ✓ %s provisioned (%s)\n", e.Name, strings.Join(svcs, ", "))
 			}
 		}()
@@ -525,8 +526,9 @@ func (r *Runner) provisionAll(ctx context.Context) error {
 	return lastErr
 }
 
-// provisionVM SSHes into a single VM, installs packages, and runs setup commands.
-func provisionVM(ctx context.Context, entry VMEntry, services, setup []string) error {
+// provisionVM SSHes into a single VM, installs packages, runs setup commands,
+// and writes motd to /etc/motd (empty motd is skipped).
+func provisionVM(ctx context.Context, entry VMEntry, services, setup []string, motd string) error {
 	addr := fmt.Sprintf("172.16.%d.2:22", entry.Index)
 
 	// Retry until SSH is up (VM may still be booting)
@@ -549,12 +551,8 @@ func provisionVM(ctx context.Context, entry VMEntry, services, setup []string) e
 	}
 	defer client.Close()
 
-	// Map service names to apt package names
+	// Install packages
 	pkgs := servicePackages(services)
-	if len(pkgs) == 0 {
-		return nil
-	}
-
 	if len(pkgs) > 0 {
 		if err := runSSH(client, "apt-get update -qq"); err != nil {
 			return fmt.Errorf("apt-get update: %w", err)
@@ -567,6 +565,13 @@ func provisionVM(ctx context.Context, entry VMEntry, services, setup []string) e
 	for _, cmd := range setup {
 		if err := runSSH(client, cmd); err != nil {
 			return fmt.Errorf("setup command %q: %w", cmd, err)
+		}
+	}
+
+	// Write scenario context as MOTD so trainees see it on SSH login
+	if motd != "" {
+		if err := writeFileSSH(client, "/etc/motd", motd); err != nil {
+			return fmt.Errorf("write motd: %w", err)
 		}
 	}
 	return nil
@@ -613,6 +618,50 @@ func runSSH(client *ssh.Client, cmd string) error {
 		return fmt.Errorf("%w\n%s", err, out)
 	}
 	return nil
+}
+
+// writeFileSSH writes content to path on the remote host by piping via stdin.
+// This avoids shell-escaping issues with arbitrary content.
+func writeFileSSH(client *ssh.Client, path, content string) error {
+	sess, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer sess.Close()
+	sess.Stdin = strings.NewReader(content)
+	if out, err := sess.Output("cat > " + path); err != nil {
+		return fmt.Errorf("%w\n%s", err, out)
+	}
+	return nil
+}
+
+// buildMOTD formats the scenario context (title, description, alerts, symptoms,
+// objectives) as a string suitable for /etc/motd on the VM.
+func (r *Runner) buildMOTD() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "\n=== %s ===\n", r.Scenario.Meta.Title)
+	fmt.Fprintf(&b, "Difficulty: %s | Architecture: %s\n\n", r.Scenario.Meta.Difficulty, r.Scenario.Meta.Architecture)
+	fmt.Fprintf(&b, "%s\n", strings.TrimSpace(r.Scenario.Meta.Description))
+
+	fmt.Fprintf(&b, "\n--- Active Alerts ---\n")
+	for _, a := range r.Scenario.Signals.Alerts {
+		fmt.Fprintf(&b, "[%s] %s — %s\n", strings.ToUpper(a.Severity), a.Name, a.Message)
+	}
+
+	if len(r.Scenario.Signals.Symptoms) > 0 {
+		fmt.Fprintf(&b, "\n--- What you're seeing ---\n")
+		for _, s := range r.Scenario.Signals.Symptoms {
+			fmt.Fprintf(&b, "  • %s\n", s)
+		}
+	}
+
+	fmt.Fprintf(&b, "\nObjectives:\n")
+	for _, obj := range r.Scenario.Objectives {
+		fmt.Fprintf(&b, "  [ ] %s\n", obj.Description)
+	}
+
+	fmt.Fprintf(&b, "\nType 'pudu hint' for a hint (-%d pts each).\n\n", r.Scenario.Scoring.HintPenalty)
+	return b.String()
 }
 
 // ── Output helpers ────────────────────────────────────────────────────────────

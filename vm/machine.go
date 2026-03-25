@@ -94,6 +94,7 @@ func New(ctx context.Context, cfg Config) (VM, error) {
 		Build(ctx)
 
 	logger := log.New()
+	logger.SetLevel(log.ErrorLevel) // suppress INFO/WARN noise; errors still shown
 	if cfg.LogLevel != "" {
 		lvl, err := log.ParseLevel(cfg.LogLevel)
 		if err == nil {
