@@ -67,7 +67,7 @@ sudo chroot "$MOUNTPOINT" ssh-keygen -A
 # SSH config — use a drop-in that wins over any other config
 echo "==> Configuring SSH..."
 sudo mkdir -p "$MOUNTPOINT/etc/ssh/sshd_config.d"
-cat <<'EOF' | sudo tee "$MOUNTPOINT/etc/ssh/sshd_config.d/99-pudu.conf" > /dev/null
+cat <<'EOF' | sudo tee "$MOUNTPOINT/etc/ssh/sshd_config.d/99-onfire.conf" > /dev/null
 PermitRootLogin yes
 PasswordAuthentication yes
 UseDNS no

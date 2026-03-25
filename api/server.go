@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/onfire/vm"
 )
 
 // LaunchDeps holds all side-effectful dependencies of launchFleet.

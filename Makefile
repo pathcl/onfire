@@ -6,9 +6,9 @@ FC_INSTALL_DIR  := /usr/local/bin
 
 KERNEL      := vmlinux.bin
 ROOTFS      := rootfs.ext4
-BINARY      := pudu
-CLIENT_BIN  := puduc/puduc
-AGENT_BIN   := pudu-agent
+BINARY      := onfire
+CLIENT_BIN  := onfirec/onfirec
+AGENT_BIN   := onfire-agent
 CLOUD_INIT_ISO := cloud-init.iso
 CLOUD_INIT_CONFIG := cloud-init-config.yaml
 
@@ -25,7 +25,7 @@ KERNEL_ARGS := "console=ttyS0 reboot=k panic=1 pci=off ip=$(VM_IP)::$(TAP_IP):$(
 # Multi-VM configuration
 N           ?= 3
 
-.PHONY: build build-puduc agent run assets net-up net-down clean cloud-init-iso update scenario server deps
+.PHONY: build build-onfirec agent run assets net-up net-down clean cloud-init-iso update scenario server deps
 
 deps:
 	@echo "==> Installing firecracker $(FC_VERSION)"
@@ -46,10 +46,10 @@ deps:
 build:
 	go build -o $(BINARY) .
 	go build -o $(AGENT_BIN) ./agent/
-	go build -o $(CLIENT_BIN) ./puduc/
+	go build -o $(CLIENT_BIN) ./onfirec/
 
-build-puduc:
-	go build -o $(CLIENT_BIN) ./puduc/
+build-onfirec:
+	go build -o $(CLIENT_BIN) ./onfirec/
 
 agent: $(AGENT_BIN)
 
@@ -130,4 +130,4 @@ cleanup: net-down-multi
 	@echo "==> Network cleaned up"
 
 clean: net-down
-	rm -f $(BINARY) $(CLIENT_BIN) $(AGENT_BIN) $(KERNEL) $(ROOTFS) $(CLOUD_INIT_ISO) cloud-init-*.iso vm-*.log vm-*.ext4 puduc/puduc
+	rm -f $(BINARY) $(CLIENT_BIN) $(AGENT_BIN) $(KERNEL) $(ROOTFS) $(CLOUD_INIT_ISO) cloud-init-*.iso vm-*.log vm-*.ext4 onfirec/onfirec

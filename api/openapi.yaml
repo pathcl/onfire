@@ -1,12 +1,12 @@
 openapi: "3.0.3"
 info:
-  title: pudu API
+  title: onfire API
   description: REST API for managing Firecracker microVM fleets and SRE incident training scenarios.
   version: "1.0.0"
 
 servers:
   - url: http://localhost:8888/api/v1
-    description: Local pudu server
+    description: Local onfire server
 
 paths:
   /fleets:

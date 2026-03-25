@@ -1,7 +1,7 @@
 # SRE Incident Patterns - Practical Examples & Remediation
 ## Real-World Scenarios for Firecracker MicroVM Training
 
-This document provides concrete, actionable examples of infrastructure failures that trainees will encounter in pudu scenarios, with diagnostic techniques and remediation steps.
+This document provides concrete, actionable examples of infrastructure failures that trainees will encounter in onfire scenarios, with diagnostic techniques and remediation steps.
 
 ---
 
@@ -34,7 +34,7 @@ Filesystem      Size  Used Avail Use% Mounted on
 
 # Find large files (sorted by size)
 $ du -sh /* 2>/dev/null | sort -rh | head -10
-500M    /.pudu-diskfill
+500M    /.onfire-diskfill
 200M    /var/log
 100M    /tmp
 
@@ -49,9 +49,9 @@ $ find / -type f -printf '%T@ %s %p\n' 2>/dev/null | sort -rn | head -5
 
 ### Root Cause Discovery
 ```bash
-# The .pudu-diskfill file is the culprit
-$ ls -lah / | grep pudu-diskfill
--rw-r--r-- 1 root root 500M /.pudu-diskfill
+# The .onfire-diskfill file is the culprit
+$ ls -lah / | grep onfire-diskfill
+-rw-r--r-- 1 root root 500M /.onfire-diskfill
 
 # This is the injected fault—a hidden file filling disk
 ```
@@ -59,7 +59,7 @@ $ ls -lah / | grep pudu-diskfill
 ### Remediation
 ```bash
 # Option 1: Remove the fault file
-$ rm /.pudu-diskfill
+$ rm /.onfire-diskfill
 $ df -h
 # Disk usage drops to 20%
 
@@ -385,9 +385,9 @@ failed
 $ curl -X GET http://172.16.0.2:7777/health
 {"status":"ok","faults":[{"id":"mem-leak","type":"memory","params":{...}}]}
 
-# The pudu-agent is running the memory leak
+# The onfire-agent is running the memory leak
 # Check agent logs
-$ ssh root@172.16.0.2 'journalctl -u pudu-agent -f'
+$ ssh root@172.16.0.2 'journalctl -u onfire-agent -f'
 ```
 
 ### Remediation
@@ -722,7 +722,7 @@ Address: 192.0.2.1
 $ ssh root@172.16.0.2 'cat /etc/hosts'
 127.0.0.1   localhost
 ::1         localhost
-192.0.2.1   db.internal # pudu-fault  <-- THE CULPRIT
+192.0.2.1   db.internal # onfire-fault  <-- THE CULPRIT
 
 # Compare with app-1
 $ ssh root@172.16.1.2 'cat /etc/hosts'
@@ -752,7 +752,7 @@ PING 172.16.2.2 ...
 
 ### Root Cause Discovery
 
-**The fault is in pudu-agent**:
+**The fault is in onfire-agent**:
 ```bash
 $ curl http://172.16.0.2:7777/health
 {
@@ -774,7 +774,7 @@ curl -X POST http://172.16.0.2:7777/fault/stop \
   -d '{"id":"dns-hijack"}'
 
 # Verify /etc/hosts is cleaned
-$ ssh root@172.16.0.2 'grep pudu-fault /etc/hosts'
+$ ssh root@172.16.0.2 'grep onfire-fault /etc/hosts'
 # Should return nothing
 
 # Re-resolve
@@ -789,7 +789,7 @@ Address: 172.16.2.2  # Real server!
 **Option 2: Manual fix (if agent broken)**
 ```bash
 # Remove the line manually
-$ ssh root@172.16.0.2 'sed -i /pudu-fault/d /etc/hosts'
+$ ssh root@172.16.0.2 'sed -i /onfire-fault/d /etc/hosts'
 
 # Flush DNS cache (systemd-resolved)
 $ ssh root@172.16.0.2 'systemctl restart systemd-resolved'

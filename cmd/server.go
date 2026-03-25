@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/pathcl/pudu/api"
-	"github.com/pathcl/pudu/vm"
-	"github.com/pathcl/pudu/web"
+	"github.com/pathcl/onfire/api"
+	"github.com/pathcl/onfire/vm"
+	"github.com/pathcl/onfire/web"
 )
 
 func serverCmd(args []string) {
@@ -83,7 +83,7 @@ func serverCmd(args []string) {
 		httpSrv.Shutdown(shutdownCtx) //nolint:errcheck
 	}()
 
-	fmt.Fprintf(os.Stderr, "==> pudu server:  http://localhost:%d        (web terminal)\n", port)
+	fmt.Fprintf(os.Stderr, "==> onfire server:  http://localhost:%d        (web terminal)\n", port)
 	fmt.Fprintf(os.Stderr, "    REST API:    http://localhost:%d/api/v1/\n", port)
 	fmt.Fprintf(os.Stderr, "Press Ctrl+C to stop\n\n")
 

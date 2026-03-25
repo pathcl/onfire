@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pathcl/pudu/api"
-	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/onfire/api"
+	"github.com/pathcl/onfire/vm"
 )
 
 // ── Test helpers ──────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-# pudu
+# onfire
 
 ## Demo
 
@@ -6,7 +6,7 @@
 
 A chaos engineering platform for SRE on-call training, built on [Firecracker](https://firecracker-microvm.github.io/) microVMs.
 
-Pudu launches fleets of lightweight VMs, injects realistic production failures (disk full, memory leaks, network latency, process crashes, DNS hijacks), and scores trainees on how quickly they diagnose and resolve the incident.
+Onfire launches fleets of lightweight VMs, injects realistic production failures (disk full, memory leaks, network latency, process crashes, DNS hijacks), and scores trainees on how quickly they diagnose and resolve the incident.
 
 ## Prerequisites
 
@@ -23,7 +23,7 @@ Pudu launches fleets of lightweight VMs, injects realistic production failures (
 make deps
 
 # 2. Build binaries (run as your regular user — Go is not in root's PATH)
-make build          # produces: pudu, pudu-agent, puduc/puduc
+make build          # produces: onfire, onfire-agent, onfirec/onfirec
 
 # 3. Download kernel + Ubuntu 22.04 rootfs, install agent into rootfs
 make assets         # ~500 MB download, takes a few minutes
@@ -40,45 +40,45 @@ Password: root
 
 ---
 
-## Usage: REST API server + puduc client
+## Usage: REST API server + onfirec client
 
 Start the server (needs root for Firecracker + TAP):
 
 ```bash
 make server
 # or manually:
-sudo ./pudu server --kernel vmlinux.bin --rootfs rootfs.ext4 --cloud-init-iso cloud-init.iso --port 8888
+sudo ./onfire server --kernel vmlinux.bin --rootfs rootfs.ext4 --cloud-init-iso cloud-init.iso --port 8888
 ```
 
-From another terminal, use `puduc` (no root required):
+From another terminal, use `onfirec` (no root required):
 
 ```bash
 # Install to PATH for convenience
-sudo cp puduc/puduc /usr/local/bin/puduc
+sudo cp onfirec/onfirec /usr/local/bin/onfirec
 
 # Launch a fleet of 2 VMs
-puduc fleet create --count 2
+onfirec fleet create --count 2
 
 # List fleets
-puduc fleet list
+onfirec fleet list
 
 # Stop a fleet
-puduc fleet delete <id>
+onfirec fleet delete <id>
 
 # Run a scenario
-puduc scenario run scenarios/monolith/disk-full.yaml
+onfirec scenario run scenarios/monolith/disk-full.yaml
 
 # Check live status + score
-puduc scenario status <id>
+onfirec scenario status <id>
 
 # Request a hint (costs points)
-puduc scenario hint <id>
+onfirec scenario hint <id>
 
 # Abort a scenario
-puduc scenario abort <id>
+onfirec scenario abort <id>
 
-# Point puduc at a remote server
-export PUDU_SERVER=http://192.168.1.10:8888
+# Point onfirec at a remote server
+export ONFIRE_SERVER=http://192.168.1.10:8888
 ```
 
 ---
@@ -88,7 +88,7 @@ export PUDU_SERVER=http://192.168.1.10:8888
 ### Single VM
 
 ```bash
-sudo ./pudu run --kernel vmlinux.bin --rootfs rootfs.ext4 --cloud-init-iso cloud-init.iso
+sudo ./onfire run --kernel vmlinux.bin --rootfs rootfs.ext4 --cloud-init-iso cloud-init.iso
 ```
 
 ### Fleet + web terminal
@@ -116,18 +116,18 @@ Once running, open **http://localhost:8888** in your browser and investigate.
 
 ```
 ┌──────────────────────────────────┐      ┌─────────────────────┐
-│  pudu server  (runs as root)     │      │  puduc  (CLI client) │
+│  onfire server  (runs as root)     │      │  onfirec  (CLI client) │
 │                                  │◀────▶│                      │
-│  /api/v1/fleets        (REST)    │ HTTP │  puduc fleet create  │
-│  /api/v1/scenarios     (REST)    │      │  puduc scenario run  │
-│  /ws?vm=N              (WS SSH)  │      │  puduc terminal N    │
+│  /api/v1/fleets        (REST)    │ HTTP │  onfirec fleet create  │
+│  /api/v1/scenarios     (REST)    │      │  onfirec scenario run  │
+│  /ws?vm=N              (WS SSH)  │      │  onfirec terminal N    │
 │  /                     (web UI)  │      └─────────────────────┘
 └──────────────────────────────────┘
          │
          │ Firecracker
          ▼
 ┌─────────────────────┐    ┌───────────────────────┐
-│  microVM (tapN)      │    │  pudu-agent  :7777    │
+│  microVM (tapN)      │    │  onfire-agent  :7777    │
 │  172.16.N.2          │───▶│  /fault/start         │
 │                      │    │  /fault/stop          │
 └─────────────────────┘    │  /metrics             │
@@ -242,8 +242,8 @@ Available metrics: `cpu_pct`, `mem_used_pct`, `disk_used_pct`, `disk_free_mb`, `
 
 ```bash
 make deps           # install firecracker + system dependencies
-make build          # build pudu, pudu-agent, puduc
-make build-puduc    # build puduc client only
+make build          # build onfire, onfire-agent, onfirec
+make build-onfirec    # build onfirec client only
 make assets         # download kernel + rootfs, install agent into rootfs
 make server         # start REST API server on :8888
 make serve          # launch fleet + web terminal (direct, N=3 default)
@@ -256,7 +256,7 @@ make cleanup        # tear down all TAP devices
 
 ## In-VM agent
 
-`pudu-agent` runs inside each VM on port `7777`.
+`onfire-agent` runs inside each VM on port `7777`.
 
 ```bash
 # Health check

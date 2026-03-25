@@ -1,6 +1,6 @@
 *.ext4
 *.log
 *.iso
-pudu
-pudu-agent
-puduc/puduc
+onfire
+onfire-agent
+onfirec/onfirec

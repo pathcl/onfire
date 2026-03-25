@@ -64,14 +64,15 @@ func validate(s *Scenario) error {
 }
 
 // BuildVMPlan resolves tiers into a concrete VM assignment, applying any
-// scale overrides provided at runtime.
-func BuildVMPlan(s *Scenario, overrides map[string]int) (*VMPlan, error) {
+// scale overrides provided at runtime. vmIDs optionally provides globally
+// allocated IDs to use instead of the default 0,1,2,... sequence.
+func BuildVMPlan(s *Scenario, overrides map[string]int, vmIDs []int) (*VMPlan, error) {
 	plan := &VMPlan{
 		ByName: make(map[string]int),
 		ByTier: make(map[string][]int),
 	}
 
-	vmIndex := 0
+	slot := 0 // position in vmIDs slice (or auto-increment when vmIDs is nil)
 	for _, tier := range s.Environment.Tiers {
 		count := tier.Count
 		if n, ok := overrides[tier.Name]; ok {
@@ -84,9 +85,16 @@ func BuildVMPlan(s *Scenario, overrides map[string]int) (*VMPlan, error) {
 			count = n
 		}
 		for j := 0; j < count; j++ {
+			var index int
+			if slot < len(vmIDs) {
+				index = vmIDs[slot]
+			} else {
+				index = slot
+			}
 			name := fmt.Sprintf("%s-%d", tier.Name, j)
+			slicePos := len(plan.VMs) // position in the VMs slice (used for lookups)
 			entry := VMEntry{
-				Index:     vmIndex,
+				Index:     index,
 				Name:      name,
 				Tier:      tier.Name,
 				TierIndex: j,
@@ -95,12 +103,12 @@ func BuildVMPlan(s *Scenario, overrides map[string]int) (*VMPlan, error) {
 				Services:  tier.Services,
 			}
 			plan.VMs = append(plan.VMs, entry)
-			plan.ByName[name] = vmIndex
-			plan.ByTier[tier.Name] = append(plan.ByTier[tier.Name], vmIndex)
-			vmIndex++
+			plan.ByName[name] = slicePos
+			plan.ByTier[tier.Name] = append(plan.ByTier[tier.Name], slicePos)
+			slot++
 		}
 	}
-	plan.TotalVMs = vmIndex
+	plan.TotalVMs = slot
 	return plan, nil
 }
 

@@ -1,11 +1,11 @@
-// Package testhelper provides shared test utilities for pudu packages.
+// Package testhelper provides shared test utilities for onfire packages.
 // It must not be imported by non-test code.
 package testhelper
 
 import (
 	"context"
 
-	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/onfire/vm"
 )
 
 // FakeVM is a no-op implementation of vm.VM for use in tests.

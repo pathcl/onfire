@@ -3,7 +3,7 @@ package api
 import (
 	"testing"
 
-	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/onfire/vm"
 )
 
 func newTestServer() *Server {

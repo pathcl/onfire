@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/onfire/vm"
 )
 
 // generatePerVMCloudInitISOs creates per-VM cloud-init ISOs with unique hostnames

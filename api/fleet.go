@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/onfire/vm"
 )
 
 // VMStatus is the public view of a single VM in a fleet.

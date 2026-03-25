@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/pathcl/pudu/vm"
-	"github.com/pathcl/pudu/web"
+	"github.com/pathcl/onfire/vm"
+	"github.com/pathcl/onfire/web"
 	"golang.org/x/crypto/ssh"
 )
 

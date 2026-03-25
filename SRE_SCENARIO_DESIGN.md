@@ -1,7 +1,7 @@
-# SRE Scenario Design Guide for Pudu
+# SRE Scenario Design Guide for Onfire
 ## Patterns for Building Training Scenarios in Firecracker MicroVM Platform
 
-This guide provides patterns, templates, and anti-patterns for creating effective SRE training scenarios in pudu.
+This guide provides patterns, templates, and anti-patterns for creating effective SRE training scenarios in onfire.
 
 ---
 
@@ -195,7 +195,7 @@ objectives:
 hints:
   - "Check disk usage: df -h"
   - "Find large files: du -sh /* 2>/dev/null | sort -rh | head -10"
-  - "A hidden .pudu-* file is the culprit"
+  - "A hidden .onfire-* file is the culprit"
 
 scoring:
   base: 100
@@ -540,8 +540,8 @@ faults:
 ```yaml
 # BAD: Hints give away the answer
 hints:
-  - "Remove the .pudu-diskfill file to recover disk space"
-  - "Run: rm /.pudu-diskfill"
+  - "Remove the .onfire-diskfill file to recover disk space"
+  - "Run: rm /.onfire-diskfill"
   - "Then run: systemctl restart nginx"
 
 # Trainee just follows hints; no learning
@@ -556,7 +556,7 @@ hints:
 
 # Trainee must:
 # 1. Run df, see high usage
-# 2. Run du, identify .pudu-diskfill
+# 2. Run du, identify .onfire-diskfill
 # 3. Decide to remove it (learning moment)
 ```
 
@@ -580,7 +580,7 @@ faults:
 faults:
   - type: disk
     at: 0s
-    # When stopped, the .pudu-diskfill file is cleaned up
+    # When stopped, the .onfire-diskfill file is cleaned up
     # Recovery is possible
 ```
 

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pathcl/pudu/scenario"
+	"github.com/pathcl/onfire/scenario"
 )
 
 func TestScore_Current(t *testing.T) {

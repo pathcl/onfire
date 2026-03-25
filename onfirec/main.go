@@ -1,15 +1,15 @@
-// puduc is a CLI client for the pudu REST API server.
+// onfirec is a CLI client for the onfire REST API server.
 //
 // Usage:
 //
-//	puduc fleet create --count 2
-//	puduc fleet list
-//	puduc fleet delete <fleet-id>
-//	puduc scenario run <file.yaml> [--scale web=2]
-//	puduc scenario status <id>
-//	puduc scenario hint <id>
-//	puduc scenario abort <id>
-//	puduc terminal <vm-id>
+//	onfirec fleet create --count 2
+//	onfirec fleet list
+//	onfirec fleet delete <fleet-id>
+//	onfirec scenario run <file.yaml> [--scale web=2]
+//	onfirec scenario status <id>
+//	onfirec scenario hint <id>
+//	onfirec scenario abort <id>
+//	onfirec terminal <vm-id>
 package main
 
 import (
@@ -26,7 +26,7 @@ import (
 var serverURL string
 
 func main() {
-	flag.StringVar(&serverURL, "server", envOrDefault("PUDU_SERVER", "http://localhost:8888"), "pudu server URL")
+	flag.StringVar(&serverURL, "server", envOrDefault("ONFIRE_SERVER", "http://localhost:8888"), "onfire server URL")
 	flag.Parse()
 
 	args := flag.Args()
@@ -50,10 +50,10 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `Usage: puduc [--server URL] <command> [args]
+	fmt.Fprintf(os.Stderr, `Usage: onfirec [--server URL] <command> [args]
 
 Environment:
-  PUDU_SERVER   server URL (default: http://localhost:8888)
+  ONFIRE_SERVER   server URL (default: http://localhost:8888)
 
 Commands:
   fleet create [--count N] [--kernel K] [--rootfs R] [--cloud-init-iso I] [--mem M] [--vcpus V]
@@ -121,7 +121,7 @@ func fleetList() {
 func fleetDelete(args []string) {
 	fs := flag.NewFlagSet("fleet delete", flag.ExitOnError)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: puduc fleet delete <fleet-id>\n\nfleet-id is the UUID from 'puduc fleet list'\n")
+		fmt.Fprintf(os.Stderr, "Usage: onfirec fleet delete <fleet-id>\n\nfleet-id is the UUID from 'onfirec fleet list'\n")
 	}
 	fs.Parse(args) //nolint:errcheck
 
@@ -132,7 +132,7 @@ func fleetDelete(args []string) {
 	}
 	if !looksLikeUUID(id) {
 		fmt.Fprintf(os.Stderr, "error: %q does not look like a fleet ID (expected UUID)\n", id)
-		fmt.Fprintf(os.Stderr, "Run 'puduc fleet list' to see fleet IDs.\n")
+		fmt.Fprintf(os.Stderr, "Run 'onfirec fleet list' to see fleet IDs.\n")
 		os.Exit(1)
 	}
 	apiDelete("/api/v1/fleets/" + id)
@@ -172,7 +172,7 @@ func scenarioCmd(args []string) {
 func scenarioSubcmd(name string, args []string, fn func(id string)) {
 	fs := flag.NewFlagSet(name, flag.ExitOnError)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: puduc %s <scenario-id>\n", name)
+		fmt.Fprintf(os.Stderr, "Usage: onfirec %s <scenario-id>\n", name)
 	}
 	fs.Parse(args) //nolint:errcheck
 	id := fs.Arg(0)
@@ -194,7 +194,7 @@ func scenarioRun(args []string) {
 
 	scenarioFile := fs.Arg(0)
 	if scenarioFile == "" {
-		fmt.Fprintf(os.Stderr, "Usage: puduc scenario run <file.yaml>\n")
+		fmt.Fprintf(os.Stderr, "Usage: onfirec scenario run <file.yaml>\n")
 		os.Exit(1)
 	}
 
@@ -215,7 +215,7 @@ func scenarioRun(args []string) {
 func terminalCmd(args []string) {
 	fs := flag.NewFlagSet("terminal", flag.ExitOnError)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: puduc terminal <vm-id>\n")
+		fmt.Fprintf(os.Stderr, "Usage: onfirec terminal <vm-id>\n")
 	}
 	fs.Parse(args) //nolint:errcheck
 

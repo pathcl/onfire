@@ -9,13 +9,13 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/pathcl/pudu/scenario"
-	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/onfire/scenario"
+	"github.com/pathcl/onfire/vm"
 )
 
 func scenarioCmd(args []string) {
 	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "Usage: pudu scenario <subcommand>\n\nSubcommands:\n  run    Run a scenario YAML file\n  hint   Request a hint for the running scenario\n")
+		fmt.Fprintf(os.Stderr, "Usage: onfire scenario <subcommand>\n\nSubcommands:\n  run    Run a scenario YAML file\n  hint   Request a hint for the running scenario\n")
 		os.Exit(1)
 	}
 	switch args[0] {

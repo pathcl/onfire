@@ -14,7 +14,7 @@ import (
 
 	"os/exec"
 
-	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/onfire/vm"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -37,7 +37,7 @@ type Runner struct {
 
 // NewRunner creates a Runner from a loaded Scenario.
 func NewRunner(s *Scenario, opts RunOptions) (*Runner, error) {
-	plan, err := BuildVMPlan(s, opts.ScaleOverrides)
+	plan, err := BuildVMPlan(s, opts.ScaleOverrides, opts.VMIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -75,16 +75,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		baseCfg.FirecrackerBin = r.opts.FirecrackerBin
 	}
 
-	// Generate per-VM cloud-init ISOs (always fresh — no stat skip)
+	// Generate per-VM cloud-init ISOs (always fresh — no stat skip).
+	// Use the VM's actual allocated ID for the filename so ForVM(id) finds it.
 	if baseCfg.CloudInitISO != "" {
 		base := baseCfg.CloudInitISO
 		stem := base[:len(base)-4] // strip .iso
-		for i := 0; i < r.Plan.TotalVMs; i++ {
-			dst := fmt.Sprintf("%s-%d.iso", stem, i)
-			hostname := r.Plan.VMs[i].Name
-			cmd := exec.Command("bash", "make-cloud-init-iso.sh", dst, "cloud-init-config.yaml", hostname)
+		for _, e := range r.Plan.VMs {
+			dst := fmt.Sprintf("%s-%d.iso", stem, e.Index)
+			cmd := exec.Command("bash", "make-cloud-init-iso.sh", dst, "cloud-init-config.yaml", e.Name)
 			if out, err := cmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("cloud-init ISO for VM %d: %w\n%s", i, err, out)
+				return fmt.Errorf("cloud-init ISO for VM %s: %w\n%s", e.Name, err, out)
 			}
 		}
 	}
@@ -643,7 +643,7 @@ func (r *Runner) buildMOTD() string {
 		fmt.Fprintf(&b, "  [ ] %s\n", obj.Description)
 	}
 
-	fmt.Fprintf(&b, "\nType 'pudu hint' for a hint (-%d pts each).\n\n", r.Scenario.Scoring.HintPenalty)
+	fmt.Fprintf(&b, "\nType 'onfire hint' for a hint (-%d pts each).\n\n", r.Scenario.Scoring.HintPenalty)
 	return b.String()
 }
 
@@ -667,7 +667,7 @@ func (r *Runner) printSignals() {
 	for _, obj := range r.Scenario.Objectives {
 		fmt.Printf("  [ ] %s\n", obj.Description)
 	}
-	fmt.Printf("\nType 'pudu hint' for a hint (-%d pts each).\n\n", r.Scenario.Scoring.HintPenalty)
+	fmt.Printf("\nType 'onfire hint' for a hint (-%d pts each).\n\n", r.Scenario.Scoring.HintPenalty)
 }
 
 func (r *Runner) printResult(solved bool) {

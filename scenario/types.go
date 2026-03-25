@@ -234,5 +234,6 @@ type RunOptions struct {
 	FirecrackerBin string
 	ScaleOverrides map[string]int // tier name → count override
 	DryRun         bool
-	WebPort        int // port for WebSSH terminal (0 = disabled)
+	WebPort        int   // port for WebSSH terminal (0 = disabled)
+	VMIDs          []int // globally allocated VM IDs; if nil, uses 0,1,2,...
 }

@@ -202,7 +202,7 @@ func runDiskFault(ctx context.Context, params map[string]string) {
 	if v, ok := params["path"]; ok {
 		path = v
 	}
-	fillPath := filepath.Join(path, ".pudu-diskfill")
+	fillPath := filepath.Join(path, ".onfire-diskfill")
 
 	f, err := os.Create(fillPath)
 	if err != nil {
@@ -327,7 +327,7 @@ func runDNSFault(params map[string]string) error {
 	}
 
 	// Append to /etc/hosts
-	entry := fmt.Sprintf("\n%s %s # pudu-fault\n", resolveTo, record)
+	entry := fmt.Sprintf("\n%s %s # onfire-fault\n", resolveTo, record)
 	f, err := os.OpenFile("/etc/hosts", os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("opening /etc/hosts: %w", err)

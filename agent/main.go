@@ -1,4 +1,4 @@
-// pudu-agent runs inside each VM and executes fault injections on behalf of
+// onfire-agent runs inside each VM and executes fault injections on behalf of
 // the scenario runner on the host. It exposes a simple HTTP API on port 7777.
 package main
 
@@ -21,7 +21,7 @@ func main() {
 	mux.HandleFunc("/fault/stop", handleFaultStop)
 
 	addr := fmt.Sprintf(":%d", agentPort)
-	log.Printf("pudu-agent listening on %s", addr)
+	log.Printf("onfire-agent listening on %s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		fmt.Fprintf(os.Stderr, "agent error: %v\n", err)
 		os.Exit(1)

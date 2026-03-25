@@ -2,7 +2,7 @@
 set -e
 
 ROOTFS="${1:-rootfs.ext4}"
-AGENT_BIN="${2:-pudu-agent}"
+AGENT_BIN="${2:-onfire-agent}"
 MOUNTPOINT="/tmp/rootfs-setup-$$"
 
 if [ ! -f "$ROOTFS" ]; then
@@ -37,7 +37,7 @@ echo "root:root" | sudo chroot "$MOUNTPOINT" chpasswd
 # Use a drop-in so it wins over any default that disables password auth
 echo "==> Configuring SSH for password login..."
 sudo mkdir -p "$MOUNTPOINT/etc/ssh/sshd_config.d"
-cat <<'EOF' | sudo tee "$MOUNTPOINT/etc/ssh/sshd_config.d/99-pudu.conf" > /dev/null
+cat <<'EOF' | sudo tee "$MOUNTPOINT/etc/ssh/sshd_config.d/99-onfire.conf" > /dev/null
 PermitRootLogin yes
 PasswordAuthentication yes
 UseDNS no
@@ -47,20 +47,20 @@ EOF
 echo "==> Enabling SSH service..."
 sudo chroot "$MOUNTPOINT" systemctl enable ssh > /dev/null 2>&1 || true
 
-# Install pudu-agent
+# Install onfire-agent
 if [ -f "$AGENT_BIN" ]; then
-    echo "==> Installing pudu-agent..."
-    sudo cp "$AGENT_BIN" "$MOUNTPOINT/usr/local/bin/pudu-agent"
-    sudo chmod +x "$MOUNTPOINT/usr/local/bin/pudu-agent"
+    echo "==> Installing onfire-agent..."
+    sudo cp "$AGENT_BIN" "$MOUNTPOINT/usr/local/bin/onfire-agent"
+    sudo chmod +x "$MOUNTPOINT/usr/local/bin/onfire-agent"
 
     # Install systemd service unit
-    cat <<'UNIT' | sudo tee "$MOUNTPOINT/etc/systemd/system/pudu-agent.service" > /dev/null
+    cat <<'UNIT' | sudo tee "$MOUNTPOINT/etc/systemd/system/onfire-agent.service" > /dev/null
 [Unit]
-Description=Pudu Fault Injection Agent
+Description=Onfire Fault Injection Agent
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/pudu-agent
+ExecStart=/usr/local/bin/onfire-agent
 Restart=always
 RestartSec=2
 StandardOutput=journal
@@ -70,10 +70,10 @@ StandardError=journal
 WantedBy=multi-user.target
 UNIT
 
-    sudo chroot "$MOUNTPOINT" systemctl enable pudu-agent > /dev/null 2>&1 || true
-    echo "  ✓ pudu-agent installed and enabled"
+    sudo chroot "$MOUNTPOINT" systemctl enable onfire-agent > /dev/null 2>&1 || true
+    echo "  ✓ onfire-agent installed and enabled"
 else
-    echo "  (skipping pudu-agent: $AGENT_BIN not found)"
+    echo "  (skipping onfire-agent: $AGENT_BIN not found)"
 fi
 
 # Install stress-ng for realistic CPU fault injection (best-effort)

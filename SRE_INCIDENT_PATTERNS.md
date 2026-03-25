@@ -64,7 +64,7 @@
 
 | Failure Mode | Symptoms | Root Cause | Impact | Typical Severity |
 |---|---|---|---|---|
-| **DNS hijacking / poisoning** | Services resolve to wrong IP; requests go to attacker or wrong service | `/etc/hosts` entry injected (pudu fault simulation); DNS server compromised; no DNSSEC validation | Service talking to wrong backend; data corruption; security breach | Engineering Manager |
+| **DNS hijacking / poisoning** | Services resolve to wrong IP; requests go to attacker or wrong service | `/etc/hosts` entry injected (onfire fault simulation); DNS server compromised; no DNSSEC validation | Service talking to wrong backend; data corruption; security breach | Engineering Manager |
 | **DNS cache stale** | VM sees old IP for service; service migrated but VM connects to old host | Cached DNS response; TTL too long; no cache invalidation; systemd-resolved caching too aggressively | Intermittent failures; connects to already-deleted service | Junior Dev |
 | **Resolv.conf misconfiguration** | All DNS lookups fail; "Temporary failure in name resolution" | cloud-init writes invalid resolv.conf; dhcp doesn't configure; no nameserver entry | Complete inability to resolve names; cascading failures | Junior Dev |
 | **DNS server unreachable** | "Connection timed out" on all name lookups; DNS traffic blocked | Firewall rule blocks UDP:53; DNS server VM crashed; network latency too high | Complete DNS blackout; service cannot start; cascading failures | Junior Dev / Mid-level SRE |
@@ -89,7 +89,7 @@
 | Failure Mode | Symptoms | Root Cause | Impact | Typical Severity |
 |---|---|---|---|---|
 | **Disk completely full (95%+)** | "no space left on device"; application crashes; cannot write logs; deployment fails | Log files grew; temporary files not cleaned; cache never evicted; large files in /tmp | Service becomes non-functional; cascading failures; difficult to troubleshoot | Junior Dev |
-| **Hidden space consumer** | `df` shows 85%, but `du -sh /` only shows 30%; "ghost" space; mysterious disk usage | Deleted files still held open; large temp files; `.pudu-diskfill` fault file (in testing) | Disk fills unpredictably; cannot clean up; need VM restart to detect | Junior Dev / Mid-level SRE |
+| **Hidden space consumer** | `df` shows 85%, but `du -sh /` only shows 30%; "ghost" space; mysterious disk usage | Deleted files still held open; large temp files; `.onfire-diskfill` fault file (in testing) | Disk fills unpredictably; cannot clean up; need VM restart to detect | Junior Dev / Mid-level SRE |
 | **Disk I/O exhaustion** | High disk utilization; service becomes slow; swap heavily used | Too many concurrent disk writes; database doing full table scans; logs writing too fast; kernel buffering | Latency spikes; timeouts; cascading failures; overall slowdown | Mid-level SRE |
 | **Swap partition exhausted** | Application gets OOM killed; swap thrashing; extremely slow system | Memory pressure causes swap overflow; no swap limits; memory leak; too many processes | Service crashes; VM becomes unusable; data corruption possible | Mid-level SRE |
 | **Filesystem quota exceeded** | Writes fail; quota enforcement kicks in; unfair resource allocation | Per-user quota hit; large user writes; quota daemon crashes | Service degradation; some users blocked; incomplete writes | Junior Dev |

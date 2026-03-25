@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pathcl/pudu/scenario"
+	"github.com/pathcl/onfire/scenario"
 )
 
 // ScenarioEntry tracks a running scenario.
@@ -117,17 +117,34 @@ func (s *Server) createScenario(w http.ResponseWriter, r *http.Request) {
 		webPort = 8888
 	}
 
+	scaleOverrides := parseScaleOverrides(req.Scale)
+
+	// Pre-build the plan so we know how many VMs to allocate IDs for.
+	tmpPlan, err := scenario.BuildVMPlan(sc, scaleOverrides, nil)
+	if err != nil {
+		http.Error(w, "failed to build VM plan: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.mu.Lock()
+	vmIDs := s.allocateVMIDs(tmpPlan.TotalVMs)
+	s.mu.Unlock()
+
 	opts := scenario.RunOptions{
 		KernelPath:     cfg.KernelImagePath,
 		RootFSPath:     cfg.RootFSPath,
 		CloudInitISO:   cfg.CloudInitISO,
 		FirecrackerBin: cfg.FirecrackerBin,
-		ScaleOverrides: parseScaleOverrides(req.Scale),
+		ScaleOverrides: scaleOverrides,
 		WebPort:        webPort,
+		VMIDs:          vmIDs,
 	}
 
 	runner, err := scenario.NewRunner(sc, opts)
 	if err != nil {
+		s.mu.Lock()
+		s.releaseVMIDs(vmIDs)
+		s.mu.Unlock()
 		http.Error(w, "failed to create runner: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -160,6 +177,7 @@ func (s *Server) createScenario(w http.ResponseWriter, r *http.Request) {
 				entry.Status = "complete"
 			}
 		}
+		s.releaseVMIDs(vmIDs)
 		s.mu.Unlock()
 	}()
 

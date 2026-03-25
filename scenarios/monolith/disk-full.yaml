@@ -60,7 +60,7 @@ objectives:
 hints:
   - text: "Check disk usage with: df -h"
   - text: "Look for large files: du -sh /* 2>/dev/null | sort -rh | head -20"
-  - text: "A hidden file named .pudu-diskfill is consuming space. Remove it to recover."
+  - text: "A hidden file named .onfire-diskfill is consuming space. Remove it to recover."
 
 scoring:
   base: 100

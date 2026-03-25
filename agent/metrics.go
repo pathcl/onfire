@@ -132,7 +132,7 @@ func listServices() []ServiceStatus {
 	candidates := []string{
 		"ssh", "sshd", "nginx", "apache2", "mysql", "postgresql",
 		"postgres", "redis", "redis-server", "app-server", "celery",
-		"pudu-agent",
+		"onfire-agent",
 	}
 	var result []ServiceStatus
 	for _, name := range candidates {

@@ -1,4 +1,4 @@
-module github.com/pathcl/pudu
+module github.com/pathcl/onfire
 
 go 1.24.5
 

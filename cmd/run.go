@@ -8,13 +8,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/pathcl/pudu/vm"
+	"github.com/pathcl/onfire/vm"
 )
 
 // Execute parses args and runs the appropriate subcommand.
 func Execute() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: pudu <command> [flags]\n\nCommands:\n  run       Launch a Firecracker microVM\n  serve     Launch VMs and start WebSSH server\n  scenario  Run an incident simulation scenario\n  server    Start the REST API server\n")
+		fmt.Fprintf(os.Stderr, "Usage: onfire <command> [flags]\n\nCommands:\n  run       Launch a Firecracker microVM\n  serve     Launch VMs and start WebSSH server\n  scenario  Run an incident simulation scenario\n  server    Start the REST API server\n")
 		os.Exit(1)
 	}
 
