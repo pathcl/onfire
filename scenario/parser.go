@@ -47,6 +47,9 @@ func validate(s *Scenario) error {
 		if t.MemMB <= 0 {
 			t.MemMB = 512
 		}
+		if t.DiskMB < 0 {
+			t.DiskMB = 0
+		}
 	}
 	for _, f := range s.Faults {
 		if f.ID == "" {
@@ -64,9 +67,9 @@ func validate(s *Scenario) error {
 }
 
 // BuildVMPlan resolves tiers into a concrete VM assignment, applying any
-// scale overrides provided at runtime. vmIDs optionally provides globally
-// allocated IDs to use instead of the default 0,1,2,... sequence.
-func BuildVMPlan(s *Scenario, overrides map[string]int, vmIDs []int) (*VMPlan, error) {
+// scale or disk overrides provided at runtime. vmIDs optionally provides
+// globally allocated IDs to use instead of the default 0,1,2,... sequence.
+func BuildVMPlan(s *Scenario, overrides map[string]int, diskOverrides map[string]int64, vmIDs []int) (*VMPlan, error) {
 	plan := &VMPlan{
 		ByName: make(map[string]int),
 		ByTier: make(map[string][]int),
@@ -93,6 +96,10 @@ func BuildVMPlan(s *Scenario, overrides map[string]int, vmIDs []int) (*VMPlan, e
 			}
 			name := fmt.Sprintf("%s-%d", tier.Name, j)
 			slicePos := len(plan.VMs) // position in the VMs slice (used for lookups)
+			diskMB := tier.DiskMB
+			if d, ok := diskOverrides[tier.Name]; ok {
+				diskMB = d
+			}
 			entry := VMEntry{
 				Index:     index,
 				Name:      name,
@@ -100,6 +107,7 @@ func BuildVMPlan(s *Scenario, overrides map[string]int, vmIDs []int) (*VMPlan, e
 				TierIndex: j,
 				VCPUs:     tier.VCPUs,
 				MemMB:     tier.MemMB,
+				DiskMB:    diskMB,
 				Services:  tier.Services,
 			}
 			plan.VMs = append(plan.VMs, entry)

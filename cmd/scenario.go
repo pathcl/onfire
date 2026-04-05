@@ -30,6 +30,7 @@ func scenarioCmd(args []string) {
 func scenarioRunCmd(args []string) {
 	cfg := vm.DefaultConfig()
 	var scaleStr string
+	var diskStr string
 	var dryRun bool
 	var webPort int
 
@@ -39,6 +40,7 @@ func scenarioRunCmd(args []string) {
 	fs.StringVar(&cfg.FirecrackerBin, "firecracker-bin", "", "path to firecracker binary")
 	fs.StringVar(&cfg.CloudInitISO, "cloud-init-iso", "", "path to cloud-init ISO")
 	fs.StringVar(&scaleStr, "scale", "", "tier scale overrides, e.g. web=2,db=1")
+	fs.StringVar(&diskStr, "disk", "", "per-tier disk size overrides in MiB, e.g. db=4096,web=2048")
 	fs.BoolVar(&dryRun, "dry-run", false, "parse and validate scenario without launching VMs")
 	fs.IntVar(&webPort, "port", 8888, "WebSSH terminal port (0 to disable)")
 	fs.Parse(args) //nolint:errcheck
@@ -63,6 +65,7 @@ func scenarioRunCmd(args []string) {
 		CloudInitISO:   cfg.CloudInitISO,
 		FirecrackerBin: cfg.FirecrackerBin,
 		ScaleOverrides: overrides,
+		DiskOverrides:  parseDiskOverrides(diskStr),
 		DryRun:         dryRun,
 		WebPort:        webPort,
 	}
@@ -96,6 +99,26 @@ func parseScaleOverrides(s string) map[string]int {
 			continue
 		}
 		var n int
+		fmt.Sscanf(kv[1], "%d", &n)
+		if n > 0 {
+			overrides[strings.TrimSpace(kv[0])] = n
+		}
+	}
+	return overrides
+}
+
+// parseDiskOverrides parses "db=4096,web=2048" into map[string]int64 (MiB).
+func parseDiskOverrides(s string) map[string]int64 {
+	overrides := make(map[string]int64)
+	if s == "" {
+		return overrides
+	}
+	for _, part := range strings.Split(s, ",") {
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		var n int64
 		fmt.Sscanf(kv[1], "%d", &n)
 		if n > 0 {
 			overrides[strings.TrimSpace(kv[0])] = n

@@ -38,6 +38,7 @@ type scenarioCreateRequest struct {
 	CloudInitISO   string `json:"cloud_init_iso"`
 	FirecrackerBin string `json:"firecracker_bin"`
 	Scale          string `json:"scale"` // e.g. "web=2,db=1"
+	Disk           string `json:"disk"`  // e.g. "db=4096,web=2048" (MiB)
 	WebPort        int    `json:"web_port"`
 }
 
@@ -121,9 +122,10 @@ func (s *Server) createScenario(w http.ResponseWriter, r *http.Request) {
 	}
 
 	scaleOverrides := parseScaleOverrides(req.Scale)
+	diskOverrides := parseDiskOverrides(req.Disk)
 
 	// Pre-build the plan so we know how many VMs to allocate IDs for.
-	tmpPlan, err := scenario.BuildVMPlan(sc, scaleOverrides, nil)
+	tmpPlan, err := scenario.BuildVMPlan(sc, scaleOverrides, diskOverrides, nil)
 	if err != nil {
 		http.Error(w, "failed to build VM plan: "+err.Error(), http.StatusBadRequest)
 		return
@@ -139,6 +141,7 @@ func (s *Server) createScenario(w http.ResponseWriter, r *http.Request) {
 		CloudInitISO:   cfg.CloudInitISO,
 		FirecrackerBin: cfg.FirecrackerBin,
 		ScaleOverrides: scaleOverrides,
+		DiskOverrides:  diskOverrides,
 		WebPort:        webPort,
 		VMIDs:          vmIDs,
 	}
@@ -339,6 +342,26 @@ func parseScaleOverrides(s string) map[string]int {
 			continue
 		}
 		var n int
+		fmt.Sscanf(kv[1], "%d", &n)
+		if n > 0 {
+			overrides[strings.TrimSpace(kv[0])] = n
+		}
+	}
+	return overrides
+}
+
+// parseDiskOverrides parses "db=4096,web=2048" into map[string]int64 (MiB).
+func parseDiskOverrides(s string) map[string]int64 {
+	overrides := make(map[string]int64)
+	if s == "" {
+		return overrides
+	}
+	for _, part := range strings.Split(s, ",") {
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		var n int64
 		fmt.Sscanf(kv[1], "%d", &n)
 		if n > 0 {
 			overrides[strings.TrimSpace(kv[0])] = n

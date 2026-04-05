@@ -56,7 +56,7 @@ Environment:
   ONFIRE_SERVER   server URL (default: http://localhost:8888)
 
 Commands:
-  fleet create [--count N] [--kernel K] [--rootfs R] [--cloud-init-iso I] [--mem M] [--vcpus V]
+  fleet create [--count N] [--kernel K] [--rootfs R] [--cloud-init-iso I] [--mem M] [--vcpus V] [--disk MiB]
   fleet list
   fleet delete <fleet-id>      fleet-id is the UUID shown by 'fleet list'
 
@@ -99,6 +99,7 @@ func fleetCreate(args []string) {
 	iso := fs.String("cloud-init-iso", "", "cloud-init ISO path")
 	mem := fs.Int64("mem", 0, "memory in MiB (0 = server default)")
 	vcpus := fs.Int64("vcpus", 0, "vCPUs (0 = server default)")
+	disk := fs.Int64("disk", 0, "disk size in MiB (0 = server default)")
 	fs.Parse(args) //nolint:errcheck
 
 	body := map[string]interface{}{
@@ -108,6 +109,7 @@ func fleetCreate(args []string) {
 		"cloud_init_iso": *iso,
 		"mem_mb":         *mem,
 		"vcpus":          *vcpus,
+		"disk_mb":        *disk,
 	}
 	resp := apiPost("/api/v1/fleets", body)
 	printJSON(resp)

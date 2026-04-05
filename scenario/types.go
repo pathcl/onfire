@@ -59,6 +59,7 @@ type Tier struct {
 	CountMax int      `yaml:"count_max"`
 	VCPUs    int64    `yaml:"vcpus"`
 	MemMB    int64    `yaml:"mem_mb"`
+	DiskMB   int64    `yaml:"disk_mb"` // 0 → use global default
 	Services []string `yaml:"services"` // apt packages to install
 	Setup    []string `yaml:"setup"`    // shell commands to run after install
 }
@@ -218,6 +219,7 @@ type VMEntry struct {
 	TierIndex int    // 0 (first in tier)
 	VCPUs     int64
 	MemMB     int64
+	DiskMB    int64 // 0 → use global default
 	Services  []string
 }
 
@@ -232,7 +234,8 @@ type RunOptions struct {
 	RootFSPath     string
 	CloudInitISO   string
 	FirecrackerBin string
-	ScaleOverrides map[string]int // tier name → count override
+	ScaleOverrides map[string]int   // tier name → count override
+	DiskOverrides  map[string]int64 // tier name → disk size in MiB override
 	DryRun         bool
 	WebPort        int   // port for WebSSH terminal (0 = disabled)
 	VMIDs          []int // globally allocated VM IDs; if nil, uses 0,1,2,...

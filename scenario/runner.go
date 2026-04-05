@@ -37,7 +37,7 @@ type Runner struct {
 
 // NewRunner creates a Runner from a loaded Scenario.
 func NewRunner(s *Scenario, opts RunOptions) (*Runner, error) {
-	plan, err := BuildVMPlan(s, opts.ScaleOverrides, opts.VMIDs)
+	plan, err := BuildVMPlan(s, opts.ScaleOverrides, opts.DiskOverrides, opts.VMIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,11 @@ func (r *Runner) Run(ctx context.Context) error {
 				return
 			}
 
-			rootFS, err := vm.PrepareRootFS(baseCfg.RootFSPath, e.Index, baseCfg.RootFSSizeMiB)
+			diskMiB := e.DiskMB
+			if diskMiB == 0 {
+				diskMiB = baseCfg.RootFSSizeMiB
+			}
+			rootFS, err := vm.PrepareRootFS(baseCfg.RootFSPath, e.Index, diskMiB)
 			if err != nil {
 				fleetErrs <- fmt.Errorf("VM %s: prepare rootfs: %w", e.Name, err)
 				return

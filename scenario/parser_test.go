@@ -52,7 +52,7 @@ func TestBuildVMPlan_Basic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	plan, err := scenario.BuildVMPlan(s, nil, nil)
+	plan, err := scenario.BuildVMPlan(s, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("BuildVMPlan() error: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestBuildVMPlan_ScaleOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	plan, err := scenario.BuildVMPlan(s, map[string]int{"app": 3}, nil)
+	plan, err := scenario.BuildVMPlan(s, map[string]int{"app": 3}, nil, nil)
 	if err != nil {
 		t.Fatalf("BuildVMPlan() error: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestBuildVMPlan_ScaleOverride(t *testing.T) {
 
 func TestResolveTargets_ByVM(t *testing.T) {
 	s, _ := scenario.Load("testdata/minimal.yaml")
-	plan, _ := scenario.BuildVMPlan(s, nil, nil)
+	plan, _ := scenario.BuildVMPlan(s, nil, nil, nil)
 
 	target := scenario.FaultTarget{VM: "app-0"}
 	indices, err := scenario.ResolveTargets(target, plan)
@@ -98,7 +98,7 @@ func TestResolveTargets_ByVM(t *testing.T) {
 
 func TestResolveTargets_UnknownVM(t *testing.T) {
 	s, _ := scenario.Load("testdata/minimal.yaml")
-	plan, _ := scenario.BuildVMPlan(s, nil, nil)
+	plan, _ := scenario.BuildVMPlan(s, nil, nil, nil)
 
 	_, err := scenario.ResolveTargets(scenario.FaultTarget{VM: "web-99"}, plan)
 	if err == nil {
@@ -117,7 +117,7 @@ func TestBuildVMPlan_WithVMIDs(t *testing.T) {
 
 	// Simulate a second scenario getting VM IDs starting at 5.
 	vmIDs := []int{5}
-	plan, err := scenario.BuildVMPlan(s, nil, vmIDs)
+	plan, err := scenario.BuildVMPlan(s, nil, nil, vmIDs)
 	if err != nil {
 		t.Fatalf("BuildVMPlan() error: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestBuildVMPlan_WithVMIDs_ResolveTargets(t *testing.T) {
 	}
 
 	vmIDs := []int{7}
-	plan, err := scenario.BuildVMPlan(s, nil, vmIDs)
+	plan, err := scenario.BuildVMPlan(s, nil, nil, vmIDs)
 	if err != nil {
 		t.Fatal(err)
 	}

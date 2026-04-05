@@ -40,6 +40,7 @@ type fleetCreateRequest struct {
 	CloudInitISO string `json:"cloud_init_iso"`
 	MemMB        int64  `json:"mem_mb"`
 	VCPUs        int64  `json:"vcpus"`
+	DiskMB       int64  `json:"disk_mb"`
 }
 
 func (s *Server) handleFleets(w http.ResponseWriter, r *http.Request) {
@@ -94,6 +95,9 @@ func (s *Server) createFleet(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.VCPUs > 0 {
 		cfg.VCPUs = req.VCPUs
+	}
+	if req.DiskMB > 0 {
+		cfg.RootFSSizeMiB = req.DiskMB
 	}
 
 	// Allocate non-overlapping VM IDs under the lock
